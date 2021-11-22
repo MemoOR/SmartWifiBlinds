@@ -46,8 +46,8 @@ const char* PARAM_V_STOP = "v_stop";
 const char* PARAM_V_BACK = "v_back";
 
 const char* PARAM_H_FRONT = "h_front";
-const char* PARAM_H_STOP = "h_front";
-const char* PARAM_H_BACK = "h_front";
+const char* PARAM_H_STOP = "h_stop";
+const char* PARAM_H_BACK = "h_back";
 
 int wifi_mode = 0;
 

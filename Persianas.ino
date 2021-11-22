@@ -4,9 +4,9 @@
  * @Description: This file contains all functions used on the project
 */
 
-#include "../libs/global.h"
-#include "../libs/credentials.h"
-#include "../libs/index.h"  
+#include "libs/global.h"
+#include "libs/credentials.h"
+#include "libs/index.h"  
 
 // ------------------------------------------------------------------------------ //
 // --------------------------Functions for html handle--------------------------- //
