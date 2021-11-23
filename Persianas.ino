@@ -26,7 +26,6 @@ void notFound(AsyncWebServerRequest* request) {
 String readFile(fs::FS& fs, const char* path) {
 	File file = fs.open(path, "r");
 	if (!file || file.isDirectory()) {
-		Serial.println("- empty file or failed to open file");
 		return String();
 	}
 	String fileContent;
@@ -34,7 +33,6 @@ String readFile(fs::FS& fs, const char* path) {
 		fileContent += String((char)file.read());
 	}
 	file.close();
-	Serial.println(fileContent);
 	return fileContent;
 }
 
@@ -45,14 +43,7 @@ String readFile(fs::FS& fs, const char* path) {
 void writeFile(fs::FS& fs, const char* path, const char* message) {
 	File file = fs.open(path, "w");
 	if (!file) {
-		Serial.println("- failed to open file for writing");
 		return;
-	}
-	if (file.print(message)) {
-		Serial.println("- file written");
-	}
-	else {
-		Serial.println("- write failed");
 	}
 	file.close();
 }
@@ -62,12 +53,11 @@ void writeFile(fs::FS& fs, const char* path, const char* message) {
  * @Description: Text processor for html server
  */
 String processor(const String& var) {
-	//Serial.println(var);
 	if (var == "i_ssid") {
-		return readFile(SPIFFS, "/inputSSID.txt");
+		return readFile(SPIFFS, ssid_path);
 	}
 	else if (var == "i_pswd") {
-		return readFile(SPIFFS, "/inputPSW.txt");
+		return readFile(SPIFFS, pswd_path);
 	}
 	else if (var == "i_v_time") {
 		return vertical_t;
@@ -76,10 +66,10 @@ String processor(const String& var) {
 		return horizontal_t;
 	}
 	else if (var == "s_v_time") {
-		return readFile(SPIFFS, "/vertical_time.txt");
+		return readFile(SPIFFS, v_time_path);
 	}
 	else if (var == "s_h_time") {
-		return readFile(SPIFFS, "/horizontal_time.txt");
+		return readFile(SPIFFS, h_time_path);
 	}
 	return String();
 }
@@ -90,7 +80,6 @@ String processor(const String& var) {
  * 				 SPIFFS.
  */
 void setupWiFi(String wifi_ssid, String wifi_pswd) {
-	Serial.printf("\r\n[Wifi]: Connecting");
 	WiFi.begin(wifi_ssid.c_str(), wifi_pswd.c_str());
 
 	while (WiFi.status() != WL_CONNECTED) {
@@ -114,8 +103,7 @@ void start_server() {
 
 	dnsServer.setTTL(300);
 	dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
-	if (dnsServer.start(DNS_PORT, "myblinds.config", apIP)) {
-		Serial.println("DNS start");
+	if (dnsServer.start(DNS_PORT, domainName, apIP)) {
 	}
 
 	// Send web page with input fields to client
@@ -128,14 +116,12 @@ void start_server() {
 		String inputMessage = "";
 
 		if (request->hasParam(PARAM_V_FRONT)) {
-			Serial.println("V_F");
 			digitalWrite(V_MOTOR_1, HIGH);
 			digitalWrite(V_MOTOR_2, LOW);
 			vertical_initial = millis();
 		}
 
 		if (request->hasParam(PARAM_V_STOP)) {
-			Serial.println("V_S");
 			digitalWrite(V_MOTOR_1, LOW);
 			digitalWrite(V_MOTOR_2, LOW);
 			vertical_finish = millis();
@@ -144,21 +130,18 @@ void start_server() {
 		}
 
 		if (request->hasParam(PARAM_V_BACK)) {
-			Serial.println("V_B");
 			digitalWrite(V_MOTOR_1, LOW);
 			digitalWrite(V_MOTOR_2, HIGH);
 			vertical_initial = millis();
 		}
 
 		if (request->hasParam(PARAM_H_FRONT)) {
-			Serial.println("H_F");
 			digitalWrite(H_MOTOR_1, HIGH);
 			digitalWrite(H_MOTOR_2, LOW);
 			horizontal_initial = millis();
 		}
 
 		if (request->hasParam(PARAM_H_STOP)) {
-			Serial.println("H_S");
 			digitalWrite(H_MOTOR_1, LOW);
 			digitalWrite(H_MOTOR_2, LOW);
 			horizontal_finish = millis();
@@ -167,7 +150,6 @@ void start_server() {
 		}
 
 		if (request->hasParam(PARAM_H_BACK)) {
-			Serial.println("H_B");
 			digitalWrite(H_MOTOR_1, LOW);
 			digitalWrite(H_MOTOR_2, HIGH);
 			horizontal_initial = millis();
@@ -175,18 +157,18 @@ void start_server() {
 
 		if (request->hasParam(PARAM_SSID) && request->hasParam(PARAM_PSW)) {
 			inputMessage = request->getParam(PARAM_SSID)->value();
-			writeFile(SPIFFS, "/inputSSID.txt", inputMessage.c_str());
+			writeFile(SPIFFS, ssid_path, inputMessage.c_str());
 
 			inputMessage = request->getParam(PARAM_PSW)->value();
-			writeFile(SPIFFS, "/inputPSW.txt", inputMessage.c_str());
+			writeFile(SPIFFS, pswd_path, inputMessage.c_str());
 		}
 
 		if (request->hasParam(PARAM_V_TIME)) {
-			writeFile(SPIFFS, "/vertical_time.txt", vertical_t);
+			writeFile(SPIFFS, v_time_path, vertical_t);
 		}
 
 		if (request->hasParam(PARAM_H_TIME)) {
-			writeFile(SPIFFS, "/horizontal_time.txt", horizontal_t);
+			writeFile(SPIFFS, h_time_path, horizontal_t);
 		}
 
 		request->send(200, "text/text", inputMessage);
@@ -199,12 +181,100 @@ void start_server() {
 // ------------------------------------------------------------------------------ //
 // ----------------------Functions for blinds movement--------------------------- //
 // ------------------------------------------------------------------------------ //
+
+/*
+ * @Author: Guillermo Ortega Romo
+ * @Description: Moves motor for vertical blinds
+ */
+void move_vertical_motor(double movement, int flag) {
+	unsigned long start_time = millis();
+	double current_time = 0;
+	while (movement - (current_time) >= 0) {
+		if (flag == 1) {
+			digitalWrite(V_MOTOR_1, HIGH);
+			digitalWrite(V_MOTOR_2, LOW);
+		}
+		else {
+			digitalWrite(V_MOTOR_1, LOW);
+			digitalWrite(V_MOTOR_2, HIGH);
+		}
+		current_time = millis() - start_time;
+	}
+	digitalWrite(V_MOTOR_1, LOW);
+	digitalWrite(V_MOTOR_2, LOW);
+}
+
+/*
+ * @Author: Guillermo Ortega Romo
+ * @Description: Gets actual position and calculates the movement for
+ * vertical blinds
+ */
+void move_vertical_blinds() {
+	double movement = vertical_nextPosition - vertical_blindsPosition;
+
+	if (movement > 0) {
+		movement = movement / 100;
+		movement = movement * vert_time;
+		move_vertical_motor(movement, 1);
+	}
+	else if (movement < 0) {
+		movement = movement * -1;
+		movement = movement / 100;
+		movement = movement * vert_time;
+		move_vertical_motor(movement, 0);
+	}
+	vertical_blindsPosition = vertical_nextPosition;
+}
+
+/*
+ * @Author: Guillermo Ortega Romo
+ * @Description: Moves motor for horizontal blinds
+ */
+void move_horizontal_motor(double movement, int flag) {
+	unsigned long start_time = millis();
+	double current_time = 0;
+	while (movement - (current_time) >= 0) {
+		if (flag == 1) {
+			digitalWrite(H_MOTOR_1, HIGH);
+			digitalWrite(H_MOTOR_2, LOW);
+		}
+		else {
+			digitalWrite(H_MOTOR_1, LOW);
+			digitalWrite(H_MOTOR_2, HIGH);
+		}
+		current_time = millis() - start_time;
+	}
+	digitalWrite(H_MOTOR_1, LOW);
+	digitalWrite(H_MOTOR_2, LOW);
+}
+
+/*
+ * @Author: Guillermo Ortega Romo
+ * @Description: Gets actual position and calculates the movement for
+ * horizontal blinds
+ */
+void move_horizontal_blinds() {
+	double movement = horizontal_nextPosition - horizontal_blindsPosition;
+
+	if (movement > 0) {
+		movement = movement / 100;
+		movement = movement * hor_time;
+		move_horizontal_motor(movement, 1);
+	}
+	else if (movement < 0) {
+		movement = movement * -1;
+		movement = movement / 100;
+		movement = movement * hor_time;
+		move_horizontal_motor(movement, 0);
+	}
+	horizontal_blindsPosition = horizontal_nextPosition;
+}
+
 /*
  * @Author: Guillermo Ortega Romo
  * @Description: Power state handler for vertical blind
  */
 bool vertical_onPowerState(const String& deviceId, bool& state) {
-	Serial.printf("Device %s power turned %s \r\n", deviceId.c_str(), state ? "on" : "off");
 	vertical_powerState = state;
 	return true; // request handled properly
 }
@@ -214,7 +284,10 @@ bool vertical_onPowerState(const String& deviceId, bool& state) {
  * @Description: Callback function for vertical blind
  */
 bool vertical_onRangeValue(const String& deviceId, int& position) {
-	Serial.printf("Device %s set position to %d\r\n", deviceId.c_str(), position);
+	vertical_nextPosition = position;
+	v_move = 1;
+	writeFile(SPIFFS, v_pos_path, String(vertical_nextPosition).c_str());
+	delay(500);
 	return true; // request handled properly
 }
 
@@ -224,7 +297,6 @@ bool vertical_onRangeValue(const String& deviceId, int& position) {
  */
 bool vertical_onAdjustRangeValue(const String& deviceId, int& positionDelta) {
 	vertical_blindsPosition += positionDelta;
-	Serial.printf("Device %s position changed about %i to %d\r\n", deviceId.c_str(), positionDelta, vertical_blindsPosition);
 	positionDelta = vertical_blindsPosition; // calculate and return absolute position
 	return true; // request handled properly
 }
@@ -234,7 +306,6 @@ bool vertical_onAdjustRangeValue(const String& deviceId, int& positionDelta) {
  * @Description: Power state handling for horizontal blind
  */
 bool horizontal_onPowerState(const String& deviceId, bool& state) {
-	Serial.printf("Device %s power turned %s \r\n", deviceId.c_str(), state ? "on" : "off");
 	horizontal_powerState = state;
 	return true; // request handled properly
 }
@@ -244,8 +315,11 @@ bool horizontal_onPowerState(const String& deviceId, bool& state) {
  * @Description: Callback function for horizontal blind
  */
 bool horizontal_onRangeValue(const String& deviceId, int& position) {
-	Serial.printf("Device %s set position to %d\r\n", deviceId.c_str(), position);
 
+	horizontal_nextPosition = position;
+	h_move = 1;
+	writeFile(SPIFFS, h_pos_path, String(horizontal_nextPosition).c_str());
+	delay(500);
 	return true; // request handled properly
 }
 
@@ -255,7 +329,6 @@ bool horizontal_onRangeValue(const String& deviceId, int& position) {
  */
 bool horizontal_onAdjustRangeValue(const String& deviceId, int& positionDelta) {
 	horizontal_blindsPosition += positionDelta;
-	Serial.printf("Device %s position changed about %i to %d\r\n", deviceId.c_str(), positionDelta, horizontal_blindsPosition);
 	positionDelta = horizontal_blindsPosition; // calculate and return absolute position
 	return true; // request handled properly
 }
@@ -301,7 +374,6 @@ void mode_change() {
  */
 void setup() {
 	Serial.begin(BAUD_RATE);
-	Serial.printf("\r\n\r\n");
 
 	pinMode(MODE_PIN, INPUT);
 
@@ -317,12 +389,10 @@ void setup() {
 	// Initialize SPIFFS
 #ifdef ESP32
 	if (!SPIFFS.begin(true)) {
-		Serial.println("An Error has occurred while mounting SPIFFS");
 		return;
 	}
 #else
 	if (!SPIFFS.begin()) {
-		Serial.println("An Error has occurred while mounting SPIFFS");
 		return;
 	}
 #endif
@@ -339,16 +409,52 @@ void setup() {
 		digitalWrite(LED_R_PIN, LOW);
 		digitalWrite(LED_G_PIN, HIGH);
 		digitalWrite(LED_B_PIN, LOW);
-		ssid = readFile(SPIFFS, "/inputSSID.txt");
-		password = readFile(SPIFFS, "/inputPSW.txt");
 
-		v_time = readFile(SPIFFS, "/vertical_time.txt");
-		h_time = readFile(SPIFFS, "/horizontal_time.txt");
+		ssid = readFile(SPIFFS, ssid_path);
+		password = readFile(SPIFFS, pswd_path);
+
+		v_time = readFile(SPIFFS, v_time_path);
+		if (v_time.length() > 0) {
+			vert_time = v_time.toInt();
+		}
+		else {
+			vert_time = 0;
+		}
+
+		h_time = readFile(SPIFFS, h_time_path);
+		if (h_time.length() > 0) {
+			hor_time = h_time.toInt();
+		}
+		else {
+			hor_time = 0;
+		}
+
+		v_pos = readFile(SPIFFS, v_pos_path);
+		if (v_pos.length() > 0) {
+			v_position = v_pos.toInt();
+		}
+		else {
+			v_position = 0;
+		}
+
+		h_pos = readFile(SPIFFS, h_pos_path);
+		if (h_pos.length() > 0) {
+			h_position = h_pos.toInt();
+		}
+		else {
+			h_position = 0;
+		}
+
+		Serial.println(ssid);
+		Serial.println(password);
+		Serial.println(vert_time);
+		Serial.println(hor_time);
+		Serial.println(v_position);
+		Serial.println(h_position);
 
 		setupWiFi(ssid, password);
 		setupSinricPro();
 	}
-	attachInterrupt(digitalPinToInterrupt(MODE_PIN), mode_change, CHANGE);
 }
 
 /*
@@ -361,6 +467,19 @@ void loop() {
 	}
 	else {
 		SinricPro.handle();
+		if (v_move == 1) {
+			move_vertical_blinds();
+			v_move = 0;
+		}
+
+		if (h_move == 1) {
+			move_horizontal_blinds();
+			h_move = 0;
+		}
+	}
+
+	if (digitalRead(MODE_PIN) != wifi_mode) {
+		mode_change();
 	}
 }
 
