@@ -27,8 +27,8 @@
 
 #define V_MOTOR_1 18
 #define V_MOTOR_2 19
-#define H_MOTOR_1 17
-#define H_MOTOR_2 16
+#define H_MOTOR_1 16
+#define H_MOTOR_2 17
 
 const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 1, 1);
