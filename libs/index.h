@@ -22,10 +22,14 @@ const char index_html[] PROGMEM = R"=====(
         text-align: center;
       }
     </style>
+
     <script>
+      function reloadPage() {
+        setTimeout(function(){ document.location.reload(false); }, 500);   
+      }
       function submitMessage() {
         alert("Saved value");
-        setTimeout(function(){ document.location.reload(false); }, 500);   
+        reloadPage(); 
       }
     </script>
   </head>
@@ -34,20 +38,18 @@ const char index_html[] PROGMEM = R"=====(
     <div class="content">
       <form action="/get" target="hidden-form">
         <div class="center_div">
-          Network name (current value: %i_ssid%): <input type="text" name="inputSSID"><br>
-          <input type="submit" value="Submit" onclick="submitMessage()">
-        </div>
-      </form><br>
-      
-      <form action="/get" target="hidden-form">
-        <div class="center_div">
-          Network password (current value: %i_pswd%): <input type="text" name="inputPSW"><br>
+          Network name (current value: %i_ssid%): 
+          <input type="text" name="inputSSID"><br>
+          Network password (current value: %i_pswd%): 
+          <input type="text" name="inputPSW"><br>
           <input type="submit" value="Submit" onclick="submitMessage()">
         </div>
       </form><br>
       
       <div class="center_div">
         <h2> Vertical Blind Manual Movement </h2>
+        <h5> (saved value: %s_v_time%) </h5>
+        <h5> (current value: %i_v_time%) </h5>
       </div>
 
       <form action="/get" target="hidden-form">
@@ -58,7 +60,7 @@ const char index_html[] PROGMEM = R"=====(
       
       <form action="/get" target="hidden-form">
         <div class="center_div">
-          <button name = "v_stop">Stop</button>
+          <button name = "v_stop" onclick="reloadPage()">Stop</button>
         </div>
       </form><br>
 
@@ -68,8 +70,16 @@ const char index_html[] PROGMEM = R"=====(
         </div>
       </form><br>
 
+      <form action="/get" target="hidden-form">
+        <div class="center_div">
+          <button name = "submit_v_time" onclick="submitMessage()">submit</button>
+        </div>
+      </form><br>
+
       <div class="center_div">
         <h2> Horizontal Blind Manual Movement </h2>
+        <h5> (saved value: %s_h_time%) </h5>
+        <h5> (current value: %i_h_time%) </h5>
       </div>
 
       <form action="/get" target="hidden-form">
@@ -80,13 +90,19 @@ const char index_html[] PROGMEM = R"=====(
       
       <form action="/get" target="hidden-form">
         <div class="center_div">
-          <button name = "h_stop">Stop</button>
+          <button name = "h_stop" onclick="reloadPage()">Stop</button>
         </div>
       </form><br>
 
       <form action="/get" target="hidden-form">
         <div class="center_div">
-          <button name = "h_back">Back</button>
+          <button name="h_back">Back</button>
+        </div>
+      </form><br>
+
+      <form action="/get" target="hidden-form">
+        <div class="center_div">
+          <button name="submit_h_time" onclick="submitMessage()">submit</button>
         </div>
       </form><br>
 

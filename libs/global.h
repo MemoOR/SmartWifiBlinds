@@ -37,9 +37,14 @@ AsyncWebServer server(80);
 
 String ssid = "";
 String password = "";
+String v_time = "";
+String h_time = "";
 
 const char* PARAM_SSID = "inputSSID";
 const char* PARAM_PSW = "inputPSW";
+
+const char* PARAM_V_TIME = "submit_v_time";
+const char* PARAM_H_TIME = "submit_h_time";
 
 const char* PARAM_V_FRONT = "v_front";
 const char* PARAM_V_STOP = "v_stop";
@@ -55,3 +60,14 @@ int vertical_blindsPosition = 0;
 bool vertical_powerState = false;
 int horizontal_blindsPosition = 0;
 bool horizontal_powerState = false;
+
+unsigned long vertical_initial;
+unsigned long vertical_finish;
+unsigned long vertical_time;
+
+unsigned long horizontal_initial;
+unsigned long horizontal_finish;
+unsigned long horizontal_time;
+
+char vertical_t[40];
+char horizontal_t[40];

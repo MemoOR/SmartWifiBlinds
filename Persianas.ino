@@ -69,6 +69,18 @@ String processor(const String& var) {
 	else if (var == "i_pswd") {
 		return readFile(SPIFFS, "/inputPSW.txt");
 	}
+	else if (var == "i_v_time") {
+		return vertical_t;
+	}
+	else if (var == "i_h_time") {
+		return horizontal_t;
+	}
+	else if (var == "s_v_time") {
+		return readFile(SPIFFS, "/vertical_time.txt");
+	}
+	else if (var == "s_h_time") {
+		return readFile(SPIFFS, "/horizontal_time.txt");
+	}
 	return String();
 }
 
@@ -119,46 +131,62 @@ void start_server() {
 			Serial.println("V_F");
 			digitalWrite(V_MOTOR_1, HIGH);
 			digitalWrite(V_MOTOR_2, LOW);
+			vertical_initial = millis();
 		}
 
 		if (request->hasParam(PARAM_V_STOP)) {
 			Serial.println("V_S");
 			digitalWrite(V_MOTOR_1, LOW);
 			digitalWrite(V_MOTOR_2, LOW);
+			vertical_finish = millis();
+			vertical_time = vertical_finish - vertical_initial;
+			sprintf(vertical_t, "%u", vertical_time);
 		}
 
 		if (request->hasParam(PARAM_V_BACK)) {
 			Serial.println("V_B");
 			digitalWrite(V_MOTOR_1, LOW);
 			digitalWrite(V_MOTOR_2, HIGH);
+			vertical_initial = millis();
 		}
 
 		if (request->hasParam(PARAM_H_FRONT)) {
 			Serial.println("H_F");
 			digitalWrite(H_MOTOR_1, HIGH);
 			digitalWrite(H_MOTOR_2, LOW);
+			horizontal_initial = millis();
 		}
 
 		if (request->hasParam(PARAM_H_STOP)) {
 			Serial.println("H_S");
 			digitalWrite(H_MOTOR_1, LOW);
 			digitalWrite(H_MOTOR_2, LOW);
+			horizontal_finish = millis();
+			horizontal_time = horizontal_finish - horizontal_initial;
+			sprintf(horizontal_t, "%u", horizontal_time);
 		}
 
 		if (request->hasParam(PARAM_H_BACK)) {
 			Serial.println("H_B");
 			digitalWrite(H_MOTOR_1, LOW);
 			digitalWrite(H_MOTOR_2, HIGH);
+			horizontal_initial = millis();
 		}
 
-		if (request->hasParam(PARAM_SSID)) {
+		if (request->hasParam(PARAM_SSID) && request->hasParam(PARAM_PSW)) {
 			inputMessage = request->getParam(PARAM_SSID)->value();
 			writeFile(SPIFFS, "/inputSSID.txt", inputMessage.c_str());
-		}
 
-		if (request->hasParam(PARAM_PSW)) {
 			inputMessage = request->getParam(PARAM_PSW)->value();
 			writeFile(SPIFFS, "/inputPSW.txt", inputMessage.c_str());
+		}
+
+		if (request->hasParam(PARAM_V_TIME)) {
+			writeFile(SPIFFS, "/vertical_time.txt", vertical_t);
+		}
+
+		if (request->hasParam(PARAM_H_TIME)) {
+			writeFile(SPIFFS, "/horizontal_time.txt", horizontal_t);
 		}
 
 		request->send(200, "text/text", inputMessage);
@@ -313,6 +341,9 @@ void setup() {
 		digitalWrite(LED_B_PIN, LOW);
 		ssid = readFile(SPIFFS, "/inputSSID.txt");
 		password = readFile(SPIFFS, "/inputPSW.txt");
+
+		v_time = readFile(SPIFFS, "/vertical_time.txt");
+		h_time = readFile(SPIFFS, "/horizontal_time.txt");
 
 		setupWiFi(ssid, password);
 		setupSinricPro();
