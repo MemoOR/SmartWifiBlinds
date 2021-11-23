@@ -75,6 +75,7 @@ int v_move = 0;
 int h_move = 0;
 
 int wifi_mode = 0;
+int motor_polarity = 0;
 
 int vertical_blindsPosition = 0;
 int vertical_nextPosition = 0;

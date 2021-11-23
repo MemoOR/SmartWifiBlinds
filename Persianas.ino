@@ -171,10 +171,12 @@ void start_server() {
 		}
 
 		if (request->hasParam(PARAM_V_TIME)) {
+			writeFile(SPIFFS, v_pos_path, String(0).c_str());
 			writeFile(SPIFFS, v_time_path, vertical_t);
 		}
 
 		if (request->hasParam(PARAM_H_TIME)) {
+			writeFile(SPIFFS, h_pos_path, String(0).c_str());
 			writeFile(SPIFFS, h_time_path, horizontal_t);
 		}
 
@@ -198,12 +200,25 @@ void move_vertical_motor(double movement, int flag) {
 	double current_time = 0;
 	while (movement - (current_time) >= 0) {
 		if (flag == 1) {
-			digitalWrite(V_MOTOR_1, HIGH);
-			digitalWrite(V_MOTOR_2, LOW);
+			if (motor_polarity == 0) {
+				digitalWrite(V_MOTOR_1, HIGH);
+				digitalWrite(V_MOTOR_2, LOW);
+			}
+			else {
+				digitalWrite(V_MOTOR_1, LOW);
+				digitalWrite(V_MOTOR_2, HIGH);
+			}
+
 		}
 		else {
-			digitalWrite(V_MOTOR_1, LOW);
-			digitalWrite(V_MOTOR_2, HIGH);
+			if (motor_polarity == 0) {
+				digitalWrite(V_MOTOR_1, LOW);
+				digitalWrite(V_MOTOR_2, HIGH);
+			}
+			else {
+				digitalWrite(V_MOTOR_1, HIGH);
+				digitalWrite(V_MOTOR_2, LOW);
+			}
 		}
 		current_time = millis() - start_time;
 	}
@@ -242,12 +257,25 @@ void move_horizontal_motor(double movement, int flag) {
 	double current_time = 0;
 	while (movement - (current_time) >= 0) {
 		if (flag == 1) {
-			digitalWrite(H_MOTOR_1, HIGH);
-			digitalWrite(H_MOTOR_2, LOW);
+			if (motor_polarity == 0) {
+				digitalWrite(H_MOTOR_1, HIGH);
+				digitalWrite(H_MOTOR_2, LOW);
+			}
+			else {
+				digitalWrite(H_MOTOR_1, LOW);
+				digitalWrite(H_MOTOR_2, HIGH);
+			}
+
 		}
 		else {
-			digitalWrite(H_MOTOR_1, LOW);
-			digitalWrite(H_MOTOR_2, HIGH);
+			if (motor_polarity == 0) {
+				digitalWrite(H_MOTOR_1, LOW);
+				digitalWrite(H_MOTOR_2, HIGH);
+			}
+			else {
+				digitalWrite(H_MOTOR_1, HIGH);
+				digitalWrite(H_MOTOR_2, LOW);
+			}
 		}
 		current_time = millis() - start_time;
 	}
