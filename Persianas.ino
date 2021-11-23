@@ -26,6 +26,7 @@ void notFound(AsyncWebServerRequest* request) {
 String readFile(fs::FS& fs, const char* path) {
 	File file = fs.open(path, "r");
 	if (!file || file.isDirectory()) {
+		Serial.println("no file");
 		return String();
 	}
 	String fileContent;
@@ -44,6 +45,12 @@ void writeFile(fs::FS& fs, const char* path, const char* message) {
 	File file = fs.open(path, "w");
 	if (!file) {
 		return;
+	}
+	if (file.print(message)) {
+		Serial.println("- file written");
+	}
+	else {
+		Serial.println("- write failed");
 	}
 	file.close();
 }
@@ -210,7 +217,7 @@ void move_vertical_motor(double movement, int flag) {
  * vertical blinds
  */
 void move_vertical_blinds() {
-	double movement = vertical_nextPosition - vertical_blindsPosition;
+	double movement = vertical_nextPosition - v_position;
 
 	if (movement > 0) {
 		movement = movement / 100;
@@ -223,7 +230,7 @@ void move_vertical_blinds() {
 		movement = movement * vert_time;
 		move_vertical_motor(movement, 0);
 	}
-	vertical_blindsPosition = vertical_nextPosition;
+	v_position = vertical_nextPosition;
 }
 
 /*
@@ -254,7 +261,7 @@ void move_horizontal_motor(double movement, int flag) {
  * horizontal blinds
  */
 void move_horizontal_blinds() {
-	double movement = horizontal_nextPosition - horizontal_blindsPosition;
+	double movement = horizontal_nextPosition - h_position;
 
 	if (movement > 0) {
 		movement = movement / 100;
@@ -267,7 +274,7 @@ void move_horizontal_blinds() {
 		movement = movement * hor_time;
 		move_horizontal_motor(movement, 0);
 	}
-	horizontal_blindsPosition = horizontal_nextPosition;
+	h_position = horizontal_nextPosition;
 }
 
 /*
