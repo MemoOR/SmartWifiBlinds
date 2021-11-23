@@ -13,7 +13,7 @@
 // ------------------------------------------------------------------------------ //
 /*
  * @Author: Guillermo Ortega Romo
- * @Description: Not found page
+ * @Description: Not found page in AP mode
  */
 void notFound(AsyncWebServerRequest* request) {
 	request->send(404, "text/plain", "Not found");
@@ -57,7 +57,7 @@ void writeFile(fs::FS& fs, const char* path, const char* message) {
 
 /*
  * @Author: Guillermo Ortega Romo
- * @Description: Text processor for html server
+ * @Description: Text processor to send stored values to html page
  */
 String processor(const String& var) {
 	if (var == "i_ssid") {
@@ -108,6 +108,7 @@ void start_server() {
 	WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 	WiFi.softAP("BlindsConfig", "12345678");    //Password length minimum 8 char  
 
+	// Create local DNS server
 	dnsServer.setTTL(300);
 	dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
 	if (dnsServer.start(DNS_PORT, domainName, apIP)) {
@@ -122,12 +123,20 @@ void start_server() {
 	server.on("/get", HTTP_GET, [](AsyncWebServerRequest* request) {
 		String inputMessage = "";
 
+		// Vertical motor front move
 		if (request->hasParam(PARAM_V_FRONT)) {
-			digitalWrite(V_MOTOR_1, HIGH);
-			digitalWrite(V_MOTOR_2, LOW);
+			if (motor_polarity == 0) {
+				digitalWrite(V_MOTOR_1, HIGH);
+				digitalWrite(V_MOTOR_2, LOW);
+			}
+			else {
+				digitalWrite(V_MOTOR_1, LOW);
+				digitalWrite(V_MOTOR_2, HIGH);
+			}
 			vertical_initial = millis();
 		}
 
+		// Vertical motor stop
 		if (request->hasParam(PARAM_V_STOP)) {
 			digitalWrite(V_MOTOR_1, LOW);
 			digitalWrite(V_MOTOR_2, LOW);
@@ -136,18 +145,33 @@ void start_server() {
 			sprintf(vertical_t, "%u", vertical_time);
 		}
 
+		// Vertical motor back move
 		if (request->hasParam(PARAM_V_BACK)) {
-			digitalWrite(V_MOTOR_1, LOW);
-			digitalWrite(V_MOTOR_2, HIGH);
+			if (motor_polarity == 0) {
+				digitalWrite(V_MOTOR_1, LOW);
+				digitalWrite(V_MOTOR_2, HIGH);
+			}
+			else {
+				digitalWrite(V_MOTOR_1, HIGH);
+				digitalWrite(V_MOTOR_2, LOW);
+			}
 			vertical_initial = millis();
 		}
 
+		// Horizontal motor Front move
 		if (request->hasParam(PARAM_H_FRONT)) {
-			digitalWrite(H_MOTOR_1, HIGH);
-			digitalWrite(H_MOTOR_2, LOW);
+			if (motor_polarity == 0) {
+				digitalWrite(H_MOTOR_1, HIGH);
+				digitalWrite(H_MOTOR_2, LOW);
+			}
+			else {
+				digitalWrite(H_MOTOR_1, LOW);
+				digitalWrite(H_MOTOR_2, HIGH);
+			}
 			horizontal_initial = millis();
 		}
 
+		// Horizontal motor stop
 		if (request->hasParam(PARAM_H_STOP)) {
 			digitalWrite(H_MOTOR_1, LOW);
 			digitalWrite(H_MOTOR_2, LOW);
@@ -156,12 +180,20 @@ void start_server() {
 			sprintf(horizontal_t, "%u", horizontal_time);
 		}
 
+		// Horizontal motor back move
 		if (request->hasParam(PARAM_H_BACK)) {
-			digitalWrite(H_MOTOR_1, LOW);
-			digitalWrite(H_MOTOR_2, HIGH);
+			if (motor_polarity == 0) {
+				digitalWrite(H_MOTOR_1, LOW);
+				digitalWrite(H_MOTOR_2, HIGH);
+			}
+			else {
+				digitalWrite(H_MOTOR_1, HIGH);
+				digitalWrite(H_MOTOR_2, LOW);
+			}
 			horizontal_initial = millis();
 		}
 
+		// When submit ssid and psw submit button pressed
 		if (request->hasParam(PARAM_SSID) && request->hasParam(PARAM_PSW)) {
 			inputMessage = request->getParam(PARAM_SSID)->value();
 			writeFile(SPIFFS, ssid_path, inputMessage.c_str());
@@ -170,11 +202,13 @@ void start_server() {
 			writeFile(SPIFFS, pswd_path, inputMessage.c_str());
 		}
 
+		// When submit vertical time button pressed
 		if (request->hasParam(PARAM_V_TIME)) {
 			writeFile(SPIFFS, v_pos_path, String(0).c_str());
 			writeFile(SPIFFS, v_time_path, vertical_t);
 		}
 
+		// When submit horizontal time button pressed
 		if (request->hasParam(PARAM_H_TIME)) {
 			writeFile(SPIFFS, h_pos_path, String(0).c_str());
 			writeFile(SPIFFS, h_time_path, horizontal_t);
@@ -198,6 +232,7 @@ void start_server() {
 void move_vertical_motor(double movement, int flag) {
 	unsigned long start_time = millis();
 	double current_time = 0;
+	// Move motor for the calculated time
 	while (movement - (current_time) >= 0) {
 		if (flag == 1) {
 			if (motor_polarity == 0) {
@@ -233,7 +268,7 @@ void move_vertical_motor(double movement, int flag) {
  */
 void move_vertical_blinds() {
 	double movement = vertical_nextPosition - v_position;
-
+	// Calculate motor movement
 	if (movement > 0) {
 		movement = movement / 100;
 		movement = movement * vert_time;
@@ -255,6 +290,7 @@ void move_vertical_blinds() {
 void move_horizontal_motor(double movement, int flag) {
 	unsigned long start_time = millis();
 	double current_time = 0;
+	// Move motor for the calculated time
 	while (movement - (current_time) >= 0) {
 		if (flag == 1) {
 			if (motor_polarity == 0) {
@@ -290,7 +326,7 @@ void move_horizontal_motor(double movement, int flag) {
  */
 void move_horizontal_blinds() {
 	double movement = horizontal_nextPosition - h_position;
-
+	// Calculate motor movement
 	if (movement > 0) {
 		movement = movement / 100;
 		movement = movement * hor_time;
@@ -306,7 +342,7 @@ void move_horizontal_blinds() {
 }
 
 /*
- * @Author: Guillermo Ortega Romo
+ * @Author: Sinric Pro
  * @Description: Power state handler for vertical blind
  */
 bool vertical_onPowerState(const String& deviceId, bool& state) {
@@ -322,12 +358,11 @@ bool vertical_onRangeValue(const String& deviceId, int& position) {
 	vertical_nextPosition = position;
 	v_move = 1;
 	writeFile(SPIFFS, v_pos_path, String(vertical_nextPosition).c_str());
-	delay(500);
 	return true; // request handled properly
 }
 
 /*
- * @Author: Guillermo Ortega Romo
+ * @Author: Siric Pro
  * @Description:
  */
 bool vertical_onAdjustRangeValue(const String& deviceId, int& positionDelta) {
@@ -337,7 +372,7 @@ bool vertical_onAdjustRangeValue(const String& deviceId, int& positionDelta) {
 }
 
 /*
- * @Author: Guillermo Ortega Romo
+ * @Author: Sinric Pro
  * @Description: Power state handling for horizontal blind
  */
 bool horizontal_onPowerState(const String& deviceId, bool& state) {
@@ -350,16 +385,14 @@ bool horizontal_onPowerState(const String& deviceId, bool& state) {
  * @Description: Callback function for horizontal blind
  */
 bool horizontal_onRangeValue(const String& deviceId, int& position) {
-
 	horizontal_nextPosition = position;
 	h_move = 1;
 	writeFile(SPIFFS, h_pos_path, String(horizontal_nextPosition).c_str());
-	delay(500);
 	return true; // request handled properly
 }
 
 /*
- * @Author: Guillermo Ortega Romo
+ * @Author: Sinric Pro
  * @Description:
  */
 bool horizontal_onAdjustRangeValue(const String& deviceId, int& positionDelta) {
@@ -396,7 +429,7 @@ void setupSinricPro() {
 // ------------------------------------------------------------------------------ //
 /*
  * @Author: Guillermo Ortega Romo
- * @Description: Interrupt function for handling mode change between AP and
+ * @Description: Function for handling mode change between AP and
  *  			 Station mode
  */
 void mode_change() {
@@ -410,6 +443,7 @@ void mode_change() {
 void setup() {
 	Serial.begin(BAUD_RATE);
 
+	// Set pins modes
 	pinMode(MODE_PIN, INPUT);
 
 	pinMode(LED_R_PIN, OUTPUT);
@@ -431,20 +465,23 @@ void setup() {
 		return;
 	}
 #endif
-
+	// get the wifi mode
 	wifi_mode = digitalRead(MODE_PIN);
 
 	if (wifi_mode == 0) {
+		// Start in AP mode
 		digitalWrite(LED_R_PIN, LOW);
 		digitalWrite(LED_G_PIN, LOW);
 		digitalWrite(LED_B_PIN, HIGH);
 		start_server();
 	}
 	else {
+		// Start in Station mode and connect to Sinric pro
 		digitalWrite(LED_R_PIN, LOW);
 		digitalWrite(LED_G_PIN, HIGH);
 		digitalWrite(LED_B_PIN, LOW);
 
+		// Read values from SPIFFS
 		ssid = readFile(SPIFFS, ssid_path);
 		password = readFile(SPIFFS, pswd_path);
 
@@ -498,9 +535,11 @@ void setup() {
  */
 void loop() {
 	if (wifi_mode == 0) {
+		// AP mode
 		dnsServer.processNextRequest();
 	}
 	else {
+		// Station mode
 		SinricPro.handle();
 		if (v_move == 1) {
 			move_vertical_blinds();
@@ -513,6 +552,7 @@ void loop() {
 		}
 	}
 
+	// Check wifi_mode
 	if (digitalRead(MODE_PIN) != wifi_mode) {
 		mode_change();
 	}
