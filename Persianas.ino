@@ -557,4 +557,3 @@ void loop() {
 		mode_change();
 	}
 }
-

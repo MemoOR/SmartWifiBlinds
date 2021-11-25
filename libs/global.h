@@ -35,7 +35,7 @@
 //Web server configuration on AP mode
 const String domainName = "myblinds.config";
 const byte DNS_PORT = 53;
-IPAddress apIP(192, 168, 1, 1);
+IPAddress apIP(192, 168, 4, 1);
 DNSServer dnsServer;
 AsyncWebServer server(80);
 
