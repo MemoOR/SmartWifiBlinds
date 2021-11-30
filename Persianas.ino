@@ -6,7 +6,7 @@
 
 #include "libs/global.h"
 #include "libs/credentials.h"
-#include "libs/index.h"  
+#include "libs/index.h"
 
 // ------------------------------------------------------------------------------ //
 // --------------------------Functions for html handle--------------------------- //
@@ -88,11 +88,19 @@ String processor(const String& var) {
  */
 void setupWiFi(String wifi_ssid, String wifi_pswd) {
 	WiFi.begin(wifi_ssid.c_str(), wifi_pswd.c_str());
+	unsigned long start = millis();
+	unsigned long actual = millis();
 
-	while (WiFi.status() != WL_CONNECTED) {
+	while (WiFi.status() != WL_CONNECTED && (actual - start) <= 8000) {
 		Serial.printf(".");
+		actual = millis();
 		delay(250);
 	}
+
+	if (WiFi.status() != WL_CONNECTED) {
+		ESP.restart();
+	}
+
 	IPAddress localIP = WiFi.localIP();
 	Serial.printf("connected!\r\n[WiFi]: IP-Address is %d.%d.%d.%d\r\n", localIP[0], localIP[1], localIP[2], localIP[3]);
 }
@@ -106,7 +114,7 @@ void start_server() {
 
 	WiFi.mode(WIFI_AP); //Access Point mode
 	WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-	WiFi.softAP("BlindsConfig", "12345678");    //Password length minimum 8 char  
+	WiFi.softAP("BlindsConfig", "12345678");    //Password length minimum 8 char
 
 	// Create local DNS server
 	dnsServer.setTTL(300);
@@ -224,6 +232,90 @@ void start_server() {
 // ------------------------------------------------------------------------------ //
 // ----------------------Functions for blinds movement--------------------------- //
 // ------------------------------------------------------------------------------ //
+
+/*
+ * @Author: Guillermo Ortega Romo
+ * @Description: Sends the up manual signal to move motor
+ */
+void manual_up() {
+	if (digitalRead(UP_BUTTON) == HIGH && digitalRead(DOWN_BUTTON) == LOW) {
+		// checks wich motor has to manually move
+		if (manual_motor == 0) {
+			// check the direction of the motor 
+			if (motor_polarity == 0) {
+				digitalWrite(V_MOTOR_1, HIGH);
+				digitalWrite(V_MOTOR_2, LOW);
+			}
+			else {
+				digitalWrite(V_MOTOR_1, LOW);
+				digitalWrite(V_MOTOR_2, HIGH);
+			}
+		}
+		// if manual motor is 1 moves horizontal motor
+		else {
+			if (motor_polarity == 0) {
+				digitalWrite(H_MOTOR_1, HIGH);
+				digitalWrite(H_MOTOR_2, LOW);
+			}
+			else {
+				digitalWrite(H_MOTOR_1, LOW);
+				digitalWrite(H_MOTOR_2, HIGH);
+			}
+		}
+	}
+	else {
+		if (manual_motor == 0) {
+			digitalWrite(V_MOTOR_1, LOW);
+			digitalWrite(V_MOTOR_2, LOW);
+		}
+		else {
+			digitalWrite(H_MOTOR_1, LOW);
+			digitalWrite(H_MOTOR_2, LOW);
+		}
+	}
+}
+
+/*
+ * @Author: Guillermo Ortega Romo
+ * @Description: Sends the down manual signal to move motor
+ */
+void manual_down() {
+	if (digitalRead(DOWN_BUTTON) == HIGH && digitalRead(UP_BUTTON) == LOW) {
+		// checks wich motor has to manually move
+		if (manual_motor == 0) {
+			// check the direction of the motor 
+			if (motor_polarity == 0) {
+				digitalWrite(V_MOTOR_1, LOW);
+				digitalWrite(V_MOTOR_2, HIGH);
+			}
+			else {
+				digitalWrite(V_MOTOR_1, HIGH);
+				digitalWrite(V_MOTOR_2, LOW);
+			}
+		}
+		// if manual motor is 1 moves horizontal motor
+		else {
+			if (motor_polarity == 0) {
+				digitalWrite(H_MOTOR_1, LOW);
+				digitalWrite(H_MOTOR_2, HIGH);
+			}
+			else {
+				digitalWrite(H_MOTOR_1, HIGH);
+				digitalWrite(H_MOTOR_2, LOW);
+			}
+		}
+	}
+	else {
+		if (manual_motor == 0) {
+			digitalWrite(V_MOTOR_1, LOW);
+			digitalWrite(V_MOTOR_2, LOW);
+		}
+		else {
+			digitalWrite(H_MOTOR_1, LOW);
+			digitalWrite(H_MOTOR_2, LOW);
+		}
+	}
+}
 
 /*
  * @Author: Guillermo Ortega Romo
@@ -407,13 +499,11 @@ bool horizontal_onAdjustRangeValue(const String& deviceId, int& positionDelta) {
  */
 void setupSinricPro() {
 	// get a new Blinds device from SinricPro
-	SinricProBlinds& verticalBlinds = SinricPro[V_BLINDS_ID];
 	verticalBlinds.onPowerState(vertical_onPowerState);
 	verticalBlinds.onRangeValue(vertical_onRangeValue);
 	verticalBlinds.onAdjustRangeValue(vertical_onAdjustRangeValue);
 
 	// get a new Blinds device from SinricPro
-	SinricProBlinds& horizontalBlinds = SinricPro[H_BLINDS_ID];
 	horizontalBlinds.onPowerState(horizontal_onPowerState);
 	horizontalBlinds.onRangeValue(horizontal_onRangeValue);
 	horizontalBlinds.onAdjustRangeValue(horizontal_onAdjustRangeValue);
@@ -445,6 +535,9 @@ void setup() {
 
 	// Set pins modes
 	pinMode(MODE_PIN, INPUT);
+	pinMode(MOTOR_POLARITY, INPUT);
+	pinMode(UP_BUTTON, INPUT);
+	pinMode(DOWN_BUTTON, INPUT);
 
 	pinMode(LED_R_PIN, OUTPUT);
 	pinMode(LED_G_PIN, OUTPUT);
@@ -481,9 +574,18 @@ void setup() {
 		digitalWrite(LED_G_PIN, HIGH);
 		digitalWrite(LED_B_PIN, LOW);
 
+		// Interrupts for manual movement
+		attachInterrupt(digitalPinToInterrupt(UP_BUTTON), manual_up, CHANGE);
+		attachInterrupt(digitalPinToInterrupt(DOWN_BUTTON), manual_down, CHANGE);
+
 		// Read values from SPIFFS
 		ssid = readFile(SPIFFS, ssid_path);
 		password = readFile(SPIFFS, pswd_path);
+
+		// If not configured ssid or psw connection mode will never start
+		if (ssid.length() == 0 || password.length() == 0) {
+			ESP.restart();
+		}
 
 		v_time = readFile(SPIFFS, v_time_path);
 		if (v_time.length() > 0) {
@@ -551,9 +653,21 @@ void loop() {
 			h_move = 0;
 		}
 	}
-
 	// Check wifi_mode
 	if (digitalRead(MODE_PIN) != wifi_mode) {
 		mode_change();
 	}
+
+	motor_polarity = digitalRead(MOTOR_POLARITY);
+
+	if (digitalRead(UP_BUTTON) == HIGH && digitalRead(DOWN_BUTTON) == HIGH) {
+		if (manual_motor != 0) {
+			manual_motor = 0;
+		}
+		else {
+			manual_motor = 1;
+		}
+	}
+
+	// verticalBlinds.sendRangeValueEvent(pos);
 }
