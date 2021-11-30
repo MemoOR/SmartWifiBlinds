@@ -18,13 +18,22 @@
 #include "SinricPro.h"
 #include "SinricProBlinds.h"
 
+#include "credentials.h"
+
 // Pins for rgb led
-#define LED_R_PIN 13
+#define LED_R_PIN 14
 #define LED_G_PIN 12
-#define LED_B_PIN 14
+#define LED_B_PIN 13
+
+// Pins for manual movement
+#define UP_BUTTON 25
+#define DOWN_BUTTON 33
 
 // Pin for wifi mode selection
-#define MODE_PIN 21
+#define MODE_PIN 35
+
+// Pin to choose motor direction 
+#define MOTOR_POLARITY 32
 
 // Pins for motor movement
 #define V_MOTOR_1 18
@@ -85,6 +94,13 @@ int h_move = 0;
 // wifi mode and motor direction
 int wifi_mode = 0;
 int motor_polarity = 0;
+
+// Decides wich motor moves on manual mode
+int manual_motor = 0;
+
+// Declare sinric pro devices
+SinricProBlinds& verticalBlinds = SinricPro[V_BLINDS_ID];
+SinricProBlinds& horizontalBlinds = SinricPro[H_BLINDS_ID];
 
 // Variables for vertical blinds managment
 int vertical_blindsPosition = 0;
